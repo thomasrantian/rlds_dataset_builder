@@ -13,9 +13,9 @@ WANDB_ENTITY = None
 WANDB_PROJECT = 'vis_rlds'
 
 
-parser = argparse.ArgumentParser()
-parser.add_argument('dataset_name', help='name of the dataset to visualize')
-args = parser.parse_args()
+# parser = argparse.ArgumentParser()
+# parser.add_argument('dataset_name', help='name of the dataset to visualize')
+# args = parser.parse_args()
 
 if WANDB_ENTITY is not None:
     render_wandb = True
@@ -26,7 +26,8 @@ else:
 
 
 # create TF dataset
-dataset_name = args.dataset_name
+#dataset_name = args.dataset_name
+dataset_name = 'fanuc_manipulation_v2'
 print(f"Visualizing data from dataset: {dataset_name}")
 module = importlib.import_module(dataset_name)
 ds = tfds.load(dataset_name, split='train')
@@ -52,7 +53,7 @@ actions, states = [], []
 for episode in tqdm.tqdm(ds.take(500)):
     for step in episode['steps']:
         actions.append(step['action'].numpy())
-        states.append(step['observation']['state'].numpy())
+        states.append(step['observation']['end_effector_state'].numpy())
 actions = np.array(actions)
 states = np.array(states)
 action_mean = actions.mean(0)

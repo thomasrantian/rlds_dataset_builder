@@ -7,7 +7,7 @@ import tensorflow_datasets as tfds
 import tensorflow_hub as hub
 
 
-class ExampleDataset(tfds.core.GeneratorBasedBuilder):
+class FanucManipulationV2(tfds.core.GeneratorBasedBuilder):
     """DatasetBuilder for example dataset."""
 
     VERSION = tfds.core.Version('1.0.0')
@@ -26,29 +26,33 @@ class ExampleDataset(tfds.core.GeneratorBasedBuilder):
                 'steps': tfds.features.Dataset({
                     'observation': tfds.features.FeaturesDict({
                         'image': tfds.features.Image(
-                            shape=(64, 64, 3),
+                            shape=(224, 224, 3),
                             dtype=np.uint8,
                             encoding_format='png',
                             doc='Main camera RGB observation.',
                         ),
                         'wrist_image': tfds.features.Image(
-                            shape=(64, 64, 3),
+                            shape=(224, 224, 3),
                             dtype=np.uint8,
                             encoding_format='png',
                             doc='Wrist camera RGB observation.',
                         ),
                         'state': tfds.features.Tensor(
-                            shape=(10,),
+                            shape=(13,),
                             dtype=np.float32,
-                            doc='Robot state, consists of [7x robot joint angles, '
-                                '2x gripper position, 1x door opening angle].',
+                            doc='Robot joints state, consists of [6x robot joint angles, '
+                                '1x gripper open status, 6x robot joint velocities].',
+                        ),
+                        'end_effector_state': tfds.features.Tensor(
+                            shape=(7,),
+                            dtype=np.float32,
+                            doc='Robot gripper end effector state, consists of [x, y, z] and 4x quaternion'
                         )
                     }),
                     'action': tfds.features.Tensor(
-                        shape=(10,),
+                        shape=(6,),
                         dtype=np.float32,
-                        doc='Robot action, consists of [7x joint velocities, '
-                            '2x gripper velocities, 1x terminate episode].',
+                        doc='Robot action, consists of [dx, dy, dz] and [droll, dpitch, dyaw]'
                     ),
                     'discount': tfds.features.Scalar(
                         dtype=np.float32,
@@ -90,9 +94,8 @@ class ExampleDataset(tfds.core.GeneratorBasedBuilder):
     def _split_generators(self, dl_manager: tfds.download.DownloadManager):
         """Define data splits."""
         return {
-            'train': self._generate_examples(path='data/train/episode_*.npy'),
-            'val': self._generate_examples(path='data/val/episode_*.npy'),
-        }
+           'train': self._generate_examples(path='data/train/episode_*.npy'),
+            }
 
     def _generate_examples(self, path) -> Iterator[Tuple[str, Any]]:
         """Generator of examples for each split."""
@@ -106,12 +109,14 @@ class ExampleDataset(tfds.core.GeneratorBasedBuilder):
             for i, step in enumerate(data):
                 # compute Kona language embedding
                 language_embedding = self._embed([step['language_instruction']])[0].numpy()
-
+                # Convert to float32 to make it work with tfds
+                step['end_effector_state'] = step['end_effector_state'].astype(np.float32)
                 episode.append({
                     'observation': {
                         'image': step['image'],
                         'wrist_image': step['wrist_image'],
                         'state': step['state'],
+                        'end_effector_state': step['end_effector_state'],
                     },
                     'action': step['action'],
                     'discount': 1.0,

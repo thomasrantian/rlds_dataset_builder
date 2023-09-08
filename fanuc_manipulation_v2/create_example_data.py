@@ -7,6 +7,24 @@ N_VAL_EPISODES = 100
 
 EPISODE_LENGTH = 10
 
+def save_episode(path, main_camera_inage_hist, wrist_camera_image_hist, state_hist, action_hist, language_instruction_hist):
+    """ 
+        image_hist: list of np arrys of shape (img_s, img_s, 3)
+        wrist_image_hist: list of np arrys of shape (img_s, img_s, 3)
+        state_hist: list of np arrys of shape (n_dof,)
+        action_hist: list of np arrys of shape (n_dof,)
+        language_instruction_hist: list of strings
+    """
+    episode = []
+    for step in range(EPISODE_LENGTH):
+        episode.append({
+            'image': np.asarray(main_camera_inage_hist[step], dtype=np.uint8),
+            'wrist_image': np.asarray(wrist_camera_image_hist[step], dtype=np.uint8),
+            'state': np.asarray(state_hist[step], dtype=np.float32),
+            'action': np.asarray(action_hist[step], dtype=np.float32),
+            'language_instruction': language_instruction_hist[step],
+        })
+    np.save(path, episode)
 
 def create_fake_episode(path):
     episode = []

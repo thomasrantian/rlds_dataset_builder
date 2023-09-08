@@ -57,18 +57,29 @@ from PIL import Image
 #                                                                                              #
 ################################################################################################
 
+def quaternion_to_euler(q):
+    # Extract quaternion components
+    w, x, y, z = q
+    # Calculate roll (x-axis rotation)
+    roll = np.arctan2(2 * (w * x + y * z), 1 - 2 * (x**2 + y**2))
+    # Calculate pitch (y-axis rotation)
+    pitch = np.arcsin(2 * (w * y - z * x))
+    # Calculate yaw (z-axis rotation)
+    yaw = np.arctan2(2 * (w * z + x * y), 1 - 2 * (y**2 + z**2))
+    return np.float32(np.array([roll, pitch, yaw]))
 
 def transform_step(step: Dict[str, Any]) -> Dict[str, Any]:
     """Maps step from source dataset to target dataset config.
        Input is dict of numpy arrays."""
     img = Image.fromarray(step['observation']['image']).resize(
         (128, 128), Image.Resampling.LANCZOS)
+    step_eef_angles = quaternion_to_euler(step['observation']['end_effector_state'][3:7])
     transformed_step = {
         'observation': {
             'image': np.array(img),
         },
         'action': np.concatenate(
-            [step['action'][:3], step['action'][5:8], step['action'][-2:]]),
+            [step['observation']['end_effector_state'][:3], step_eef_angles, step['observation']['state'][6:7], np.array([np.float32(step['is_terminal'])])]),
     }
 
     # copy over all other fields unchanged
